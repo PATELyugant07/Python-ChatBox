@@ -1,0 +1,124 @@
+<!-- chatbot_app/templates/chatbot_app/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatMCA</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <style>
+        .chatbot-container {
+            max-width: 800px;
+            height: 90vh;
+        }
+        .chat-messages {
+            height: calc(100% - 100px);
+            overflow-y: auto;
+        }
+        .message-bubble {
+            border-radius: 1.25rem;
+            padding: 0.75rem 1rem;
+        }
+        .user-message {
+            background-color: #2563EB;
+            color: white;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #E5E7EB;
+            color: #374151;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="chatbot-container bg-white shadow-xl rounded-2xl flex flex-col p-6">
+        <h1 class="text-3xl font-bold text-center mb-4 text-gray-800">ChatMCA</h1>
+        <div class="chat-messages flex flex-col space-y-4 p-4">
+            <!-- Messages will be dynamically added here by JavaScript -->
+        </div>
+        <form id="chat-form" class="flex p-4 border-t-2 border-gray-200">
+            <textarea
+                id="user-input"
+                class="flex-1 resize-none border-0 rounded-full px-4 py-2 bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Type your message..."
+                rows="1"
+            ></textarea>
+            <button
+                type="submit"
+                class="ml-2 bg-blue-600 text-white rounded-full p-3 hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" transform="rotate(90 12 12)"/>
+                </svg>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // JavaScript for handling the chat logic
+        const chatForm = document.getElementById('chat-form');
+        const chatMessages = document.querySelector('.chat-messages');
+        const userInput = document.getElementById('user-input');
+
+        // Function to add a message to the chat display
+        function addMessage(message, sender) {
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('flex', 'space-x-2', 'items-start', 'max-w-xs');
+
+            const messageBubble = document.createElement('p');
+            messageBubble.classList.add('message-bubble', 'text-sm');
+            messageBubble.textContent = message;
+
+            if (sender === 'user') {
+                messageContainer.classList.add('justify-end');
+                messageBubble.classList.add('user-message');
+            } else {
+                messageContainer.classList.add('justify-start');
+                messageBubble.classList.add('bot-message');
+            }
+
+            messageContainer.appendChild(messageBubble);
+            chatMessages.appendChild(messageContainer);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to the bottom
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, 'user');
+            userInput.value = '';
+
+            // Display a loading indicator
+            addMessage('...', 'bot');
+
+            try {
+                const response = await fetch('/api/chat/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message }),
+                });
+
+                const data = await response.json();
+
+                // Remove the loading indicator
+                chatMessages.removeChild(chatMessages.lastChild);
+
+                if (response.ok) {
+                    addMessage(data.response, 'bot');
+                } else {
+                    addMessage(`Error: ${data.error}`, 'bot');
+                }
+            } catch (error) {
+                // Remove the loading indicator
+                chatMessages.removeChild(chatMessages.lastChild);
+                addMessage('An unexpected error occurred. Please try again.', 'bot');
+            }
+        });
+    </script>
+</body>
+</html>
