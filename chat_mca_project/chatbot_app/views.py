@@ -49,3 +49,44 @@ def chat_response(request):
 
 def chat_home(request):
     return render(request, 'chatbot_app/index.html')
+
+@csrf_exempt
+def summarize_chat(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        chat_history = data.get('history', [])
+
+        if not chat_history:
+            return JsonResponse({'error': 'No chat history provided'}, status=400)
+
+        # Join all messages into a single string for summarization
+        full_conversation = " ".join([f"{msg['sender']}: {msg['text']}" for msg in chat_history])
+
+        # Create a prompt for Gemini to summarize the conversation
+        summarize_prompt = "Summarize the following chat conversation in a single, concise sentence:\n\n" + full_conversation
+
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": summarize_prompt}
+                    ]
+                }
+            ]
+        }
+
+        try:
+            response = requests.post(GEMINI_API_URL, json=payload)
+            response.raise_for_status()
+            gemini_response_data = response.json()
+
+            summary = gemini_response_data['candidates'][0]['content']['parts'][0]['text']
+
+            return JsonResponse({'summary': summary})
+
+        except requests.exceptions.RequestException as e:
+            return JsonResponse({'error': f'API request failed: {e}'}, status=500)
+        except (KeyError, IndexError) as e:
+            return JsonResponse({'error': f'Invalid API response format: {e}'}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
